@@ -2908,6 +2908,15 @@ if (message.key.remoteJid.endsWith("@g.us") && !message.key.fromMe) {
   : (fullCommand || "");
       const args = text?.trim().split(" ").slice(1) || [];
 
+      // ============================================
+      // 🔒 IGNORE UNAUTHORIZED DM COMMANDS
+      // ============================================
+      // Group commands remain unaffected.
+      // Only owner/sudo users can use commands in DMs.
+      if (!isGroup && command && !canUseAsOwner) {
+        return;
+      }
+
         // ============================================
         // AUTO VIEW + REACT STATUS CONTROLS
         // ============================================
