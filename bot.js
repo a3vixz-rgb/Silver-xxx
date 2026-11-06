@@ -1742,7 +1742,7 @@ async function startBot() {
   // Load saved data on startup
   loadData();
 
-  const { state, saveCreds } = await useMultiFileAuthState("auth_info");
+  const { state, saveCreds } = await useMultiFileAuthState("/data/auth_info");
 
   const socketLogger = pino({ 
     level: process.env.DEBUG_BAILEYS === 'true' ? 'debug' : 'warn',
