@@ -126,12 +126,19 @@ const messageCache = new Map(); // Cache messages for anti-delete { messageId: m
 const MAX_CACHE_SIZE = 1000; // Maximum messages to cache
 const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes expiry
 
-// Data file path
-const DATA_FILE = path.join(__dirname, 'bot_data.json');
+// Persistent data storage for SkyHost
+const LEGACY_DATA_FILE = path.join(__dirname, 'bot_data.json');
+const DATA_FILE = path.join('/data', 'bot_data.json');
 
 // Load data from JSON file
 const loadData = () => {
   try {
+    // Migrate existing settings once, without overwriting persistent data
+    if (!fs.existsSync(DATA_FILE) && fs.existsSync(LEGACY_DATA_FILE)) {
+      fs.copyFileSync(LEGACY_DATA_FILE, DATA_FILE);
+      logger.info('Migrated existing bot settings to persistent storage');
+    }
+
     if (fs.existsSync(DATA_FILE)) {
       const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
 
@@ -300,6 +307,7 @@ const saveData = () => {
       lastSaved: new Date().toISOString()
     };
     
+    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
     logger.debug('Bot data saved to JSON');
   } catch (error) {
