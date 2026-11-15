@@ -4719,6 +4719,51 @@ if (command === "vv" && canUseBot) {
               return;
             }
 
+            // TEMP: Inspect the actual quoted message used by .vv
+            try {
+              const found = [];
+
+              const walkQuoted = (obj, currentPath = "quoted", depth = 0) => {
+                if (!obj || typeof obj !== "object" || depth > 8) return;
+
+                for (const [key, value] of Object.entries(obj)) {
+                  if (!value || typeof value !== "object") continue;
+
+                  const nextPath = `${currentPath}.${key}`;
+
+                  if (key === "imageMessage" || key === "videoMessage") {
+                    found.push({
+                      path: nextPath,
+                      type: key,
+                      viewOnce: !!value.viewOnce,
+                      urlPresent: !!value.url,
+                      directPathPresent: !!value.directPath,
+                      mediaKeyPresent: !!value.mediaKey,
+                      mimetype: value.mimetype || null,
+                      fileLength: value.fileLength || null
+                    });
+                  }
+
+                  if (
+                    key.startsWith("viewOnceMessage") ||
+                    ["ephemeralMessage", "deviceSentMessage",
+                     "documentWithCaptionMessage"].includes(key)
+                  ) {
+                    walkQuoted(value.message || value, nextPath, depth + 1);
+                  }
+                }
+              };
+
+              walkQuoted(quoted);
+
+              console.log("[VV-QUOTED-DEBUG]", {
+                quotedRootKeys: Object.keys(quoted),
+                detectedMedia: found
+              });
+            } catch (debugError) {
+              console.error("[VV-QUOTED-DEBUG] Error:", debugError.message);
+            }
+
             const viewOnceMsg = await extractViewOnceMedia(quoted);
             if (!viewOnceMsg) {
               await sock.sendMessage(message.key.remoteJid, {
