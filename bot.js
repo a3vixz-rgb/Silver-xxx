@@ -542,23 +542,47 @@ const fetchCryptoPrice = async (symbol) => {
 
 
 const extractViewOnceMedia = async (quoted) => {
-  let viewOnceMsg = null;
+  const findMedia = (obj, depth = 0) => {
+    if (!obj || typeof obj !== "object" || depth > 10) {
+      return null;
+    }
 
-  if (quoted?.viewOnceMessage) {
-    viewOnceMsg = quoted.viewOnceMessage.message || quoted.viewOnceMessage;
-  } else if (quoted?.viewOnceMessageV2) {
-    viewOnceMsg = quoted.viewOnceMessageV2.message;
-  } else if (quoted?.viewOnceMessageV2Extension) {
-    viewOnceMsg = quoted.viewOnceMessageV2Extension.message;
-  }
+    if (obj.imageMessage) {
+      return { imageMessage: obj.imageMessage };
+    }
 
-  if (!viewOnceMsg && quoted?.imageMessage) {
-    viewOnceMsg = { imageMessage: quoted.imageMessage };
-  } else if (!viewOnceMsg && quoted?.videoMessage) {
-    viewOnceMsg = { videoMessage: quoted.videoMessage };
-  }
+    if (obj.videoMessage) {
+      return { videoMessage: obj.videoMessage };
+    }
 
-  return viewOnceMsg;
+    const wrapperKeys = [
+      "viewOnceMessage",
+      "viewOnceMessageV2",
+      "viewOnceMessageV2Extension",
+      "ephemeralMessage",
+      "deviceSentMessage",
+      "documentWithCaptionMessage"
+    ];
+
+    for (const key of wrapperKeys) {
+      if (obj[key]) {
+        const nested = obj[key].message || obj[key];
+        const result = findMedia(nested, depth + 1);
+        if (result) return result;
+      }
+    }
+
+    for (const value of Object.values(obj)) {
+      if (value && typeof value === "object") {
+        const result = findMedia(value, depth + 1);
+        if (result) return result;
+      }
+    }
+
+    return null;
+  };
+
+  return findMedia(quoted);
 };
 
 const downloadViewOnceMedia = async (viewOnceMsg) => {
@@ -2825,7 +2849,7 @@ if (message.key.remoteJid.endsWith("@g.us") && !message.key.fromMe) {
       // ============================================
       // Anti-Delete: Cache messages for recovery
       // ============================================
-      if (antiDeleteEnabled && !message.key.fromMe) {
+      if (!message.key.fromMe) {
         const messageId = message.key.id;
         const cacheData = {
   id: messageId,
@@ -4383,7 +4407,6 @@ if (command === "cancelkick") {
             });
           } else if (option === "off") {
             antiDeleteEnabled = false;
-            messageCache.clear();
             saveData();
             await sock.sendMessage(message.key.remoteJid, {
               text: `❌ *Anti-Delete Disabled*`,
@@ -4764,7 +4787,25 @@ if (command === "vv" && canUseBot) {
               console.error("[VV-QUOTED-DEBUG] Error:", debugError.message);
             }
 
-            const viewOnceMsg = await extractViewOnceMedia(quoted);
+            // Recover original media from the message cache when available.
+            const quotedContext = message.message.extendedTextMessage?.contextInfo;
+            const quotedId = quotedContext?.stanzaId;
+            const cachedOriginal = quotedId ? messageCache.get(quotedId) : null;
+
+            const viewOnceMsg =
+              (cachedOriginal?.message
+                ? await extractViewOnceMedia(cachedOriginal.message)
+                : null) ||
+              await extractViewOnceMedia(quoted);
+
+            console.log("[VV-CACHE-DEBUG]", {
+              quotedIdPresent: !!quotedId,
+              cacheHit: !!cachedOriginal,
+              originalMessageKeys: cachedOriginal?.message
+                ? Object.keys(cachedOriginal.message)
+                : []
+            });
+
             if (!viewOnceMsg) {
               await sock.sendMessage(message.key.remoteJid, {
                 text: "❌ Not a view-once message.",
@@ -7445,7 +7486,6 @@ _Use responsibly!_`,
             });
           } else if (option === "off") {
             antiDeleteEnabled = false;
-            messageCache.clear();
             saveData();
             await sock.sendMessage(message.key.remoteJid, {
               text: `❌ *Anti-Delete Disabled*`,
