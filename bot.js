@@ -128,7 +128,7 @@ const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes expiry
 
 // Persistent data storage for SkyHost
 const LEGACY_DATA_FILE = path.join(__dirname, 'bot_data.json');
-const DATA_FILE = path.join('/data', 'bot_data.json');
+const DATA_FILE = path.join(__dirname, 'bot_data.json');
 
 // Load data from JSON file
 const loadData = () => {
@@ -1750,7 +1750,7 @@ async function startBot() {
   // Load saved data on startup
   loadData();
 
-  const { state, saveCreds } = await useMultiFileAuthState("/data/auth_info");
+  const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, "auth_info"));
 
   const socketLogger = pino({ 
     level: process.env.DEBUG_BAILEYS === 'true' ? 'debug' : 'warn',
