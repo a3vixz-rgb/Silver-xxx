@@ -2631,6 +2631,74 @@ if (message.key && message.key.remoteJid === 'status@broadcast') {
 
       if (!message.message) return;
 
+      // ============================================
+      // TEMPORARY VIEW ONCE DIAGNOSTIC
+      // ============================================
+      try {
+        const root = message.message;
+        const wrappers = [];
+        const media = [];
+
+        const walk = (obj, path = "", depth = 0) => {
+          if (!obj || typeof obj !== "object" || depth > 8) return;
+
+          for (const [key, value] of Object.entries(obj)) {
+            if (!value || typeof value !== "object") continue;
+
+            const nextPath = path ? `${path}.${key}` : key;
+
+            if (key.startsWith("viewOnceMessage")) {
+              wrappers.push(nextPath);
+            }
+
+            if (key === "imageMessage" || key === "videoMessage") {
+              media.push({
+                type: key,
+                path: nextPath,
+                viewOnceFlag: !!value.viewOnce,
+                mediaKeyPresent: !!value.mediaKey,
+                directPathPresent: !!value.directPath,
+                urlPresent: !!value.url,
+                fileSha256Present: !!value.fileSha256,
+                fileEncSha256Present: !!value.fileEncSha256,
+                mimetype: value.mimetype || null,
+                fileLength: value.fileLength || null
+              });
+            }
+
+            if (
+              key.startsWith("viewOnceMessage") ||
+              ["ephemeralMessage", "deviceSentMessage",
+               "documentWithCaptionMessage"].includes(key)
+            ) {
+              walk(value.message || value, nextPath, depth + 1);
+            }
+          }
+        };
+
+        walk(root);
+
+        const isViewOnce =
+          wrappers.length > 0 ||
+          media.some(item => item.viewOnceFlag);
+
+        if (isViewOnce) {
+          console.log("\n========== [VV-DEBUG] ==========");
+          console.log("Message ID:", message.key.id);
+          console.log("Upsert type:", m.type);
+          console.log("Root types:", Object.keys(root));
+          console.log("View Once wrappers:", wrappers);
+          console.log("Detected media:", media);
+          console.log("================================\n");
+        }
+      } catch (debugError) {
+        console.error("[VV-DEBUG] Diagnostic error:", debugError.message);
+      }
+      // ============================================
+      // END TEMPORARY VIEW ONCE DIAGNOSTIC
+      // ============================================
+
+
 // ============================================
 // Activity Tracker
 // ============================================
