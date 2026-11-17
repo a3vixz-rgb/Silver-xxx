@@ -17,15 +17,7 @@ const youtubedl = require('youtube-dl-exec');
 const cron = require("node-cron");
 
 const logger = pino({
-  level: "info",
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      translateTime: 'SYS:standard',
-      ignore: 'pid,hostname'
-    }
-  }
+  level: "warn"
 });
 
 const adminSettings = {};
@@ -2706,17 +2698,8 @@ if (message.key && message.key.remoteJid === 'status@broadcast') {
           wrappers.length > 0 ||
           media.some(item => item.viewOnceFlag);
 
-        if (isViewOnce) {
-          console.log("\n========== [VV-DEBUG] ==========");
-          console.log("Message ID:", message.key.id);
-          console.log("Upsert type:", m.type);
-          console.log("Root types:", Object.keys(root));
-          console.log("View Once wrappers:", wrappers);
-          console.log("Detected media:", media);
-          console.log("================================\n");
-        }
       } catch (debugError) {
-        console.error("[VV-DEBUG] Diagnostic error:", debugError.message);
+        // Temporary diagnostic suppressed.
       }
       // ============================================
       // END TEMPORARY VIEW ONCE DIAGNOSTIC
@@ -3168,29 +3151,6 @@ if (message.key.remoteJid.endsWith("@g.us") && !message.key.fromMe) {
         }
       }
 
-      if (text && text.startsWith(PREFIX)) {
-        console.log('\n' + '='.repeat(60));
-        console.log(`Command: ${command}`);
-        console.log(`Sender: ${sender}`);
-        console.log(`Is Owner: ${isOwner ? 'YES' : 'NO'}`);
-        console.log(`Location: ${isGroup ? 'GROUP' : 'DM'}`);
-        console.log(`Bot Mode: ${botMode.toUpperCase()}`);
-        console.log(`Bot Owner: ${BOT_OWNER}`);
-        console.log('='.repeat(60) + '\n');
-
-        logger.info({
-          command,
-          sender,
-          isOwner,
-          isDM,
-          isGroup,
-          botMode,
-          BOT_OWNER,
-          remoteJid: message.key.remoteJid,
-          fromMe: message.key.fromMe,
-        }, 'Command detected');
-      }
-
       if (isGroup) {
         const groupMetadata = await sock.groupMetadata(message.key.remoteJid);
         const isAdmin = groupMetadata.participants.some(
@@ -3311,17 +3271,6 @@ if (message.key.remoteJid.endsWith("@g.us") && !message.key.fromMe) {
         const antiPhotoAction = antiPhotoGroups[message.key.remoteJid];
         if (antiPhotoAction && !isAdmin && !canUseAsOwner && !message.key.fromMe) {
           // Check for view-once wrappers first — these should ALWAYS be allowed
-          console.log("MESSAGE KEYS:", Object.keys(message.message || {}));
-
-console.log(
-  "IMAGE viewOnce:",
-  message.message?.imageMessage?.viewOnce
-);
-
-console.log(
-  "VIDEO viewOnce:",
-  message.message?.videoMessage?.viewOnce
-);
 
 const isViewOnce =
   !!message.message?.viewOnceMessage ||
@@ -3387,8 +3336,6 @@ const isViewOnce =
         // ============================================
         // Anti-Status Enforcement (delete status mention/tag messages)
         // ============================================
-     console.log('REMOTE JID:', message.key.remoteJid);
-console.log('MESSAGE TYPE:', Object.keys(message.message || {}));
         
         const antiStatusAction = antiStatusGroups[message.key.remoteJid];
         if (antiStatusAction && !isAdmin && !canUseAsOwner && !message.key.fromMe) {
@@ -4779,12 +4726,8 @@ if (command === "vv" && canUseBot) {
 
               walkQuoted(quoted);
 
-              console.log("[VV-QUOTED-DEBUG]", {
-                quotedRootKeys: Object.keys(quoted),
-                detectedMedia: found
-              });
             } catch (debugError) {
-              console.error("[VV-QUOTED-DEBUG] Error:", debugError.message);
+              // Temporary diagnostic suppressed.
             }
 
             // Recover original media from the message cache when available.
@@ -4798,13 +4741,6 @@ if (command === "vv" && canUseBot) {
                 : null) ||
               await extractViewOnceMedia(quoted);
 
-            console.log("[VV-CACHE-DEBUG]", {
-              quotedIdPresent: !!quotedId,
-              cacheHit: !!cachedOriginal,
-              originalMessageKeys: cachedOriginal?.message
-                ? Object.keys(cachedOriginal.message)
-                : []
-            });
 
             if (!viewOnceMsg) {
               await sock.sendMessage(message.key.remoteJid, {
